@@ -22,26 +22,7 @@ public class Observable<T> {
     }
     
     public <R> Observable<R> map(Transformer<? super T, ? extends R> transformer) {
-        return create(new OnSubscribe<R>() {// 生成一个桥接的Observable和 OnSubscribe
-            @Override
-            public void call(Subscriber<? super R> subscriber) {
-                Observable.this.subscribe(new Subscriber<T>() {// 订阅上层的Observable
-                    @Override
-                    public void onCompleted() {
-                        subscriber.onCompleted();
-                    }
-                    @Override
-                    public void onError(Throwable t) {
-                        subscriber.onError(t);
-                    }
-                    @Override
-                    public void onNext(T t) {
-                        // 将上层的onSubscribe发送过来的Event，通过转换和处理，转发给目标的subscriber
-                        subscriber.onNext(transformer.call(t));
-                    }
-                });
-            }
-        });
+        return create(new MapOnSubscribe<T, R>(this, transformer));
     }
     
     public interface Transformer<T, R> {
