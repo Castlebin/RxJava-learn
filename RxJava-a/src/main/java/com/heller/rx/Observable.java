@@ -25,6 +25,22 @@ public class Observable<T> {
         return create(new MapOnSubscribe<T, R>(this, transformer));
     }
     
+    public Observable<T> subscribeOn(Scheduler scheduler) {
+        return Observable.create(new OnSubscribe<T>() {
+            @Override
+            public void call(Subscriber<? super T> subscriber) {
+                subscriber.onStart();
+                // 将事件的生产切换到新的线程。
+                scheduler.createWorker().schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        Observable.this.onSubscribe.call(subscriber);
+                    }
+                });
+            }
+        });
+    }
+    
     public interface Transformer<T, R> {
         R call(T from);
     }
