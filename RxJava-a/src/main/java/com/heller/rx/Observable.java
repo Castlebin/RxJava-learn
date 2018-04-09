@@ -41,6 +41,47 @@ public class Observable<T> {
         });
     }
     
+    public Observable<T> observeOn(Scheduler scheduler) {
+        return Observable.create(new OnSubscribe<T>() {
+            @Override
+            public void call(Subscriber<? super T> subscriber) {
+                subscriber.onStart();
+                Scheduler.Worker worker = scheduler.createWorker();
+                Observable.this.onSubscribe.call(new Subscriber<T>() {
+                    @Override
+                    public void onCompleted() {
+                        worker.schedule(new Runnable() {
+                            @Override
+                            public void run() {
+                                subscriber.onCompleted();
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(Throwable t) {
+                        worker.schedule(new Runnable() {
+                            @Override
+                            public void run() {
+                                subscriber.onError(t);
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onNext(T var1) {
+                        worker.schedule(new Runnable() {
+                            @Override
+                            public void run() {
+                                subscriber.onNext(var1);
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+    
     public interface Transformer<T, R> {
         R call(T from);
     }

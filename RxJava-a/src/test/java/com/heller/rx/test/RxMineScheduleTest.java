@@ -43,4 +43,30 @@ public class RxMineScheduleTest {
         Thread.currentThread().join(2000);
     }
     
+    @Test
+    public void testSchedule2() throws InterruptedException {
+        Observable.create(new Observable.OnSubscribe<Integer>() {
+            @Override
+            public void call(Subscriber<? super Integer> subscriber) {
+                System.out.println("OnSubscribe@ " + Thread.currentThread().getName()); // main
+                subscriber.onNext(1);
+            }
+        })
+            .observeOn(Schedulers.io())
+            .subscribe(new Subscriber<Integer>() {
+                @Override
+                public void onCompleted() { }
+                @Override
+                public void onError(Throwable t) { }
+                @Override
+                public void onNext(Integer var1) {
+                    System.out.println("Subscriber@ " + Thread.currentThread().getName()); // new Thread
+                    System.out.println(var1);
+                }
+            });
+        
+        // 等待2再让junit结束
+        Thread.currentThread().join(2000);
+    }
+    
 }

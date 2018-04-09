@@ -28,3 +28,67 @@ map操作符的作用是将T类型的Event转化成R类型，
 Transformer#call方法的返回值要求是R类型的，所以call方法的返回类型要声明为R的子类
 
 
+subscribeOn是作用于上层OnSubscribe的，可以让OnSubscribe的call方法在新线程中执行。
+
+因此，在Observable类里面，添加如下代码：
+
+    public Observable<T> subscribeOn(Scheduler scheduler) {
+        return Observable.create(new OnSubscribe<T>() {
+            @Override
+            public void call(Subscriber<? super T> subscriber) {
+                subscriber.onStart();
+                // 将事件的生产切换到新的线程。
+                scheduler.createWorker().schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        Observable.this.onSubscribe.call(subscriber);
+                    }
+                });
+            }
+        });
+    }
+    
+    实现observeOn
+    subscribeOn是作用于下层Subscriber的，需要让下层Subscriber的事件处理方法放到新线程中执行。
+    
+    为此，在Observable类里面，添加如下代码：
+    
+        public Observable<T> observeOn(Scheduler scheduler) {
+            return Observable.create(new OnSubscribe<T>() {
+                @Override
+                public void call(Subscriber<? super T> subscriber) {
+                    subscriber.onStart();
+                    Scheduler.Worker worker = scheduler.createWorker();
+                    Observable.this.onSubscribe.call(new Subscriber<T>() {
+                        @Override
+                        public void onCompleted() {
+                            worker.schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    subscriber.onCompleted();
+                                }
+                            });
+                        }
+                        @Override
+                        public void onError(Throwable t) {
+                            worker.schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    subscriber.onError(t);
+                                }
+                            });
+                        }
+                        @Override
+                        public void onNext(T var1) {
+                            worker.schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    subscriber.onNext(var1);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
